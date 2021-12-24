@@ -1,6 +1,6 @@
 Roost is a tool to help with generating tabular data sets. With roost you can:
 
-* Define and generate telemetry packets
-* Aggregate packets into tabular data sets
-* Stream data to and from your hard drive
+* Ingest telemetry packets from sources
+* Take snapshots of current telemetry states
+* Save/Stream data to and from your hard drive
 
