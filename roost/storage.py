@@ -5,6 +5,7 @@ from threading import Lock
 import pandas as pd
 import pyarrow as pa
 
+from roost.arrow_utils import promote_schemas, create_table, cast_available
 
 class Storage:
     def __init__(self):
@@ -17,13 +18,17 @@ class Storage:
         self._staged = {"_internals": {"index": 0}}
         self.lock = Lock()
         self._committed = {}
-        self._batches = []
-        self._batched_schema = None
+        self._tables = []
 
         # EVENTS
         self.on_stage: List[StageSink] = []
         self.on_commit: List[StorageSink] = []
         self.on_save: List[StorageSink] = []
+
+    @property
+    def num_batched_rows(self):
+        return sum(t.num_rows for t in self._tables)
+
 
     def stage(self, key: str, packet: Dict[str, object]):
         with self.lock:
@@ -47,7 +52,7 @@ class Storage:
                     try:
                         self._committed[k].append(v)
                     except KeyError:
-                        self._committed[k] = [None] * current_index
+                        self._committed[k] = [None] * (current_index - self.num_batched_rows)
                         self._committed[k].append(v)
                     missing.discard(k)
 
@@ -65,11 +70,17 @@ class Storage:
 
     def batch(self):
         with self.lock:
-            batch = pa.RecordBatch.from_pydict(self._committed)
-            self._batches.append(batch)
+            if not self._committed:
+                return
+            tbl = create_table(self._committed)
+            self._tables.append(tbl)
             self._committed.clear()
-            # if not self._batched_schema:
-            #     self._batched_schema =
+
+            # ensure all batches have consistent schema. If they don't then promote them all (expensive)
+            if len(self._tables) != 1:
+                promoted_schema = promote_schemas(t.schema for t in self._tables)
+                self._tables = [cast_available(t, promoted_schema) for t in self._tables]
+
 
 
 class PyObjSlicer:
@@ -79,9 +90,17 @@ class PyObjSlicer:
     def __getitem__(self, item) -> Dict[str, object]:
         if isinstance(item, slice):
             with self.parent.lock:
-                output = {}
+
+                tbl = pa.concat_tables(self.parent._tables)[item]
+                output = tbl.to_pydict()
+
+                com_start = None if item.start is None else item.start - self.parent.num_batched_rows
+                com_stop = None if item.stop is None else item.stop -self.parent.num_batched_rows
+                com_slice = slice(com_start, com_stop, item.step)
+
                 for k, v in self.parent._committed.items():
-                    output[k] = v[item]
+                    output.setdefault(k, []).extend(v[com_slice])
+
         elif isinstance(item, tuple) and len(item) == 2:
             row_slicer = item[0]
             col_slicer = item[1]
