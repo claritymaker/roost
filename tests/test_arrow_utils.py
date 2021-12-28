@@ -1,5 +1,6 @@
 import pyarrow as pa
-from roost.arrow_utils import create_table, promote_schemas, cast_available
+
+from roost.arrow_utils import cast_available, create_table, promote_schemas
 
 
 def test_basic_concat_tables():

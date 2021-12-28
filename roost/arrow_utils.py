@@ -1,10 +1,10 @@
-from typing import Iterable, Sequence, Dict, Any
-from enum import Enum
 from copy import deepcopy
+from enum import Enum
+from functools import lru_cache
+from typing import Any, Dict, Iterable, Sequence
 
 import pandas as pd
 import pyarrow as pa
-from functools import lru_cache
 from pyarrow import compute
 
 

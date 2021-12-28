@@ -1,4 +1,5 @@
-from typing import Optional, NamedTuple
+from typing import NamedTuple, Optional
+
 import pyarrow.feather
 import pyarrow.ipc
 import pyarrow.parquet

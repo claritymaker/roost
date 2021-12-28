@@ -1,11 +1,10 @@
-from typing import Dict, Iterable, Tuple, List
-from typing import Protocol
 from threading import Lock
+from typing import Dict, Iterable, List, Protocol, Tuple
 
 import pandas as pd
 import pyarrow as pa
 
-from roost.arrow_utils import promote_schemas, create_table, cast_available
+from roost.arrow_utils import cast_available, create_table, promote_schemas
 
 
 class Storage:

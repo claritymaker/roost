@@ -1,10 +1,12 @@
-from random import randint
-from roost.storage import Storage
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum, auto
+from random import randint
 from typing import NamedTuple
+
 import pandas as pd
-from collections import defaultdict
+
+from roost.storage import Storage
 
 
 class DummyEnum(Enum):
