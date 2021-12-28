@@ -4,7 +4,7 @@ from typing import Dict, Iterable, List, Protocol, Tuple
 import pandas as pd
 import pyarrow as pa
 
-from roost.arrow_utils import cast_available, create_table, promote_schemas
+from roost.arrow_utils import cast_available, create_table, promote_schemas, join_tables
 
 
 class Storage:
@@ -137,9 +137,7 @@ class ArrowSlicer:
 
             with self.parent.lock:
                 tbls = [] + self.parent._tables + [create_table(self.parent._committed)]
-                promoted_schema = promote_schemas(t.schema for t in tbls)
-                tbls = [cast_available(t, promoted_schema) for t in tbls]
-                tbl = pa.concat_tables(tbls, promote=True).take(row_slicer)
+                tbl = join_tables(tbls).take(row_slicer)
                 return tbl
 
         elif isinstance(item, tuple) and len(item) == 2:
@@ -161,13 +159,7 @@ class ArrowSlicer:
 
             with self.parent.lock:
                 tbls = [] + self.parent._tables + [create_table(self.parent._committed)]
-                promoted_schema = promote_schemas(t.schema for t in tbls)
-                tbls = [cast_available(t, promoted_schema) for t in tbls]
-                tbl = (
-                    pa.concat_tables(tbls, promote=True)
-                    .select(col_slicer)
-                    .take(row_slicer)
-                )
+                tbl = join_tables(tbls).select(col_slicer).take(row_slicer)
                 return tbl
         else:
             raise TypeError(

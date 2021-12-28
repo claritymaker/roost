@@ -61,7 +61,6 @@ def test_routes():
         s.commit()
 
     desired_output = {**k1, **k2}
-    # desired_output = {k: [v] for k, v in desired_output.items()}
     desired_output["index"] = list(range(n_rows))
     output = s.pyobj[:]
     assert output == desired_output
@@ -70,7 +69,7 @@ def test_routes():
 def test_batching():
     s = Storage()
     n_rows = 10
-    n_batches = 1
+    n_batches = 3
     index = 0
     desired_output = defaultdict(list)
     for b in range(n_batches + 1):
@@ -78,6 +77,29 @@ def test_batching():
             tmp1 = generate_data(idx, "k1_", lossy=False)
             for k, v in tmp1.items():
                 desired_output[k].append(v)
+            s.stage("key1", tmp1)
+            s.commit()
+            desired_output["index"].append(index)
+            index += 1
+        s.batch()
+
+    output = s.pyobj[:]
+    assert output == desired_output
+
+
+def test_schema_evolution():
+    s = Storage()
+    n_rows = 10
+    n_batches = 3
+    index = 0
+    desired_output = defaultdict(list)
+    for b in range(n_batches + 1):
+        for idx in range(n_rows):
+            tmp1 = generate_data(idx, "k1_", lossy=False)
+            for k, v in tmp1.items():
+                desired_output[k].append(v)
+            if b > 1:
+                tmp1
             s.stage("key1", tmp1)
             s.commit()
             desired_output["index"].append(index)

@@ -129,12 +129,6 @@ def promote_types(types: Iterable[pa.DataType]):
     raise TypeError(f"Cannot find common type between fields")
 
 
-# try:
-#     union_schema =  pa.unify_schemas([first_schema, second_schema, third_schema])
-# except pa.ArrowInvalid as e:
-#     print(e)
-
-
 def promote_schemas(schemas: Iterable[pa.Schema]):
     schemas = list(schemas)
     output_schema = schemas[0]
@@ -199,3 +193,9 @@ def cast_available(table: pa.Table, schema: pa.Schema) -> pa.Table:
     )
 
     return table.cast(s2)
+
+
+def join_tables(tables: Sequence[pa.Table]) -> pa.Table:
+    promoted_schema = promote_schemas([t.schema for t in tables])
+    cast_tables = [cast_available(t, promoted_schema) for t in tables]
+    return pa.concat_tables(cast_tables, promote=True)
