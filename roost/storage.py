@@ -23,6 +23,7 @@ class Storage:
         # EVENTS
         self.on_stage: List[StageSink] = []
         self.on_commit: List[StorageSink] = []
+        self.on_batch: List[StorageSink] = []
         self.on_save: List[StorageSink] = []
 
     @property
@@ -94,6 +95,9 @@ class Storage:
             if len(self._tables) != 1:
                 promoted_schema = promote_schemas(t.schema for t in self._tables)
                 self._tables = [cast_available(t, promoted_schema) for t in self._tables]
+
+            for sink in self.on_batch:
+                sink.save(self)
 
 
 
