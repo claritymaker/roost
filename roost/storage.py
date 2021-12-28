@@ -7,6 +7,7 @@ import pyarrow as pa
 
 from roost.arrow_utils import promote_schemas, create_table, cast_available
 
+
 class Storage:
     def __init__(self):
         # SLICERS
@@ -67,7 +68,9 @@ class Storage:
                     try:
                         self._committed[k].append(v)
                     except KeyError:
-                        self._committed[k] = [None] * (current_index - self.num_batched_rows)
+                        self._committed[k] = [None] * (
+                            current_index - self.num_batched_rows
+                        )
                         self._committed[k].append(v)
                     missing.discard(k)
 
@@ -94,11 +97,12 @@ class Storage:
             # ensure all batches have consistent schema. If they don't then promote them all (expensive)
             if len(self._tables) != 1:
                 promoted_schema = promote_schemas(t.schema for t in self._tables)
-                self._tables = [cast_available(t, promoted_schema) for t in self._tables]
+                self._tables = [
+                    cast_available(t, promoted_schema) for t in self._tables
+                ]
 
             for sink in self.on_batch:
                 sink.save(self)
-
 
 
 class PyObjSlicer:
@@ -118,6 +122,7 @@ class PandasSlicer:
         output = pd.DataFrame(input).set_index("index")
         return output
 
+
 class ArrowSlicer:
     def __init__(self, parent: Storage):
         self.parent = parent
@@ -126,7 +131,9 @@ class ArrowSlicer:
         if isinstance(item, slice):
             row_slicer = item
             if isinstance(row_slicer, slice):
-                r_start, r_stop, r_stride = row_slicer.indices(self.parent.num_committed_rows)
+                r_start, r_stop, r_stride = row_slicer.indices(
+                    self.parent.num_committed_rows
+                )
                 row_slicer = list(range(r_start, r_stop, r_stride))
 
             with self.parent.lock:
@@ -139,29 +146,40 @@ class ArrowSlicer:
         elif isinstance(item, tuple) and len(item) == 2:
             row_slicer = item[0]
             if isinstance(row_slicer, slice):
-                r_start, r_stop, r_stride = row_slicer.indices(self.parent.num_committed_rows)
+                r_start, r_stop, r_stride = row_slicer.indices(
+                    self.parent.num_committed_rows
+                )
                 row_slicer = list(range(r_start, r_stop, r_stride))
 
             col_slicer = item[1]
             if isinstance(col_slicer, str):
-                col_slicer = (col_slicer, )
+                col_slicer = (col_slicer,)
             if isinstance(col_slicer, slice):
-                c_start, c_stop, c_stride = col_slicer.indices(self.parent.num_committed_columns)
+                c_start, c_stop, c_stride = col_slicer.indices(
+                    self.parent.num_committed_columns
+                )
                 col_slicer = list(range(c_start, c_stop, c_stride))
 
             with self.parent.lock:
                 tbls = [] + self.parent._tables + [create_table(self.parent._committed)]
                 promoted_schema = promote_schemas(t.schema for t in tbls)
                 tbls = [cast_available(t, promoted_schema) for t in tbls]
-                tbl = pa.concat_tables(tbls, promote=True).select(col_slicer).take(row_slicer)
+                tbl = (
+                    pa.concat_tables(tbls, promote=True)
+                    .select(col_slicer)
+                    .take(row_slicer)
+                )
                 return tbl
         else:
-            raise TypeError("Slicing must be either [row] or [row, column] or [row, [columns]].")
+            raise TypeError(
+                "Slicing must be either [row] or [row, column] or [row, [columns]]."
+            )
 
 
 class StorageSink(Protocol):
     def save(self, storage: Storage):
         ...
+
 
 class StageSink(Protocol):
     def save(self, storage: Storage, key: str, packet: Dict[str, object]):

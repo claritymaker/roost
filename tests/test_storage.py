@@ -6,6 +6,7 @@ from typing import NamedTuple
 import pandas as pd
 from collections import defaultdict
 
+
 class DummyEnum(Enum):
     en_a = auto()
     en_b = auto()
@@ -22,16 +23,20 @@ def generate_data(idx: int, key_prefix="", lossy=False):
         f"{key_prefix}int": idx,
         f"{key_prefix}float": idx + 0.1,
         f"{key_prefix}str": str(idx),
-        f"{key_prefix}str_varwidth": str(idx)*randint(0, 10),
+        f"{key_prefix}str_varwidth": str(idx) * randint(0, 10),
         f"{key_prefix}datetime": datetime.now(),
-        f"{key_prefix}list": list(range(idx, idx+10)),
-        f"{key_prefix}dict": {"dict_a": idx, "dict_b": list(range(idx, idx+10))},
+        f"{key_prefix}list": list(range(idx, idx + 10)),
+        f"{key_prefix}dict": {"dict_a": idx, "dict_b": list(range(idx, idx + 10))},
     }
     if lossy:
         output[f"{key_prefix}enum"] = DummyEnum(1 + (idx % 3))
         output[f"{key_prefix}named_tuple"] = DummyNamedTuple(dnt_a=idx, dnt_b=-idx)
-        output[f"{key_prefix}df"] = pd.DataFrame({"dict_a": list(range(idx, idx+1)), "dict_b": list(range(idx, idx-1, -1))})
-
+        output[f"{key_prefix}df"] = pd.DataFrame(
+            {
+                "dict_a": list(range(idx, idx + 1)),
+                "dict_b": list(range(idx, idx - 1, -1)),
+            }
+        )
 
     return output
 
@@ -59,6 +64,7 @@ def test_routes():
     output = s.pyobj[:]
     assert output == desired_output
 
+
 def test_batching():
     s = Storage()
     n_rows = 10
@@ -78,5 +84,3 @@ def test_batching():
 
     output = s.pyobj[:]
     assert output == desired_output
-
-

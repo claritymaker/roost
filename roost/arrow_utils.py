@@ -15,22 +15,100 @@ def promote_types(types: Iterable[pa.DataType]):
         return f_types.pop()
 
     known_types = {
-        pa.bool_(): [pa.bool_(), pa.int8(), pa.int16(), pa.int32(), pa.uint8(), pa.uint16(), pa.uint32(), pa.uint64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.uint8(): [pa.int16(), pa.int32(), pa.int64(), pa.uint8(), pa.uint16(), pa.uint32(), pa.uint64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.uint16(): [pa.int32(), pa.int64(), pa.uint16(), pa.uint32(), pa.uint64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.uint32(): [pa.int64(), pa.uint32(), pa.uint64(), pa.float32(), pa.float64(), pa.string()],
+        pa.bool_(): [
+            pa.bool_(),
+            pa.int8(),
+            pa.int16(),
+            pa.int32(),
+            pa.uint8(),
+            pa.uint16(),
+            pa.uint32(),
+            pa.uint64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.uint8(): [
+            pa.int16(),
+            pa.int32(),
+            pa.int64(),
+            pa.uint8(),
+            pa.uint16(),
+            pa.uint32(),
+            pa.uint64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.uint16(): [
+            pa.int32(),
+            pa.int64(),
+            pa.uint16(),
+            pa.uint32(),
+            pa.uint64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.uint32(): [
+            pa.int64(),
+            pa.uint32(),
+            pa.uint64(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
         pa.uint64(): [pa.int64(), pa.uint64(), pa.float16(), pa.float64(), pa.string()],
-        pa.int8(): [pa.int8(), pa.int16(), pa.int32(), pa.int64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.int16(): [pa.int16(), pa.int32(), pa.int64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.int32(): [pa.int32(), pa.int64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
-        pa.int64(): [pa.int32(), pa.int64(), pa.float16(), pa.float32(), pa.float64(), pa.string()],
+        pa.int8(): [
+            pa.int8(),
+            pa.int16(),
+            pa.int32(),
+            pa.int64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.int16(): [
+            pa.int16(),
+            pa.int32(),
+            pa.int64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.int32(): [
+            pa.int32(),
+            pa.int64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
+        pa.int64(): [
+            pa.int32(),
+            pa.int64(),
+            pa.float16(),
+            pa.float32(),
+            pa.float64(),
+            pa.string(),
+        ],
         pa.float16(): [pa.float16(), pa.float32(), pa.float64(), pa.string()],
         pa.float32(): [pa.float32(), pa.float64(), pa.string()],
         pa.float64(): [pa.float64(), pa.string()],
-        pa.timestamp('ns'): [pa.timestamp('s'), pa.timestamp('ms'), pa.timestamp('us'), pa.string()],
-        pa.timestamp('us'): [pa.timestamp('s'), pa.timestamp('ms'), pa.string()],
-        pa.timestamp('ms'): [pa.timestamp('s'), pa.string()],
-        pa.timestamp('s'): [pa.string()],
+        pa.timestamp("ns"): [
+            pa.timestamp("s"),
+            pa.timestamp("ms"),
+            pa.timestamp("us"),
+            pa.string(),
+        ],
+        pa.timestamp("us"): [pa.timestamp("s"), pa.timestamp("ms"), pa.string()],
+        pa.timestamp("ms"): [pa.timestamp("s"), pa.string()],
+        pa.timestamp("s"): [pa.string()],
     }
 
     for base_t, base_up in deepcopy(known_types).items():
@@ -38,7 +116,7 @@ def promote_types(types: Iterable[pa.DataType]):
         known_types[base_t].extend(list_types)
         known_types[pa.list_(base_t)] = list_types
 
-    known_types[pa.string()] = [pa.string()],
+    known_types[pa.string()] = ([pa.string()],)
 
     avail_types = set(known_types[pa.bool_()])
     for f in f_types:
@@ -50,10 +128,12 @@ def promote_types(types: Iterable[pa.DataType]):
             return t
     raise TypeError(f"Cannot find common type between fields")
 
+
 # try:
 #     union_schema =  pa.unify_schemas([first_schema, second_schema, third_schema])
 # except pa.ArrowInvalid as e:
 #     print(e)
+
 
 def promote_schemas(schemas: Iterable[pa.Schema]):
     schemas = list(schemas)
@@ -114,6 +194,8 @@ def cast_available(table: pa.Table, schema: pa.Schema) -> pa.Table:
         idx = schema.get_field_index(k)
         schema = schema.remove(idx)
 
-    s2 = pa.schema((schema.field(n) for n in table.schema.names), metadata=schema.metadata)
+    s2 = pa.schema(
+        (schema.field(n) for n in table.schema.names), metadata=schema.metadata
+    )
 
     return table.cast(s2)
