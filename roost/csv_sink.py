@@ -7,6 +7,7 @@ class CSVSink:
     def __init__(self, filename):
         self.filename = filename
         self.current_index = 0
+        self.current_schema = None
 
     def save(self, storage: Storage):
         to_append = storage.pandas[self.current_index+1:]

@@ -42,10 +42,10 @@ def test_routes():
     k1 = defaultdict(list)
     k2 = defaultdict(list)
     for idx in range(n_rows):
-        tmp1 = generate_data(idx, "k1_", lossy=True)
+        tmp1 = generate_data(idx, "k1_", lossy=False)
         for k, v in tmp1.items():
             k1[k].append(v)
-        tmp2 = generate_data(idx, "k2_", lossy=True)
+        tmp2 = generate_data(idx, "k2_", lossy=False)
         for k, v in tmp2.items():
             k2[k].append(v)
 

@@ -87,7 +87,7 @@ def create_table(pyobj: Dict[str, Sequence[Any]]) -> pa.Table:
             arr = pa.array(v)
         except pa.ArrowInvalid as e:
             # peek at type, make educated guesses based on types
-            # TODO: pick first (or last?) non-None value
+            # pick first (or last?) non-None value?
             if isinstance(v[0], Enum):
                 # If the first value is an Enum, lets try to assume all of them are also enums
                 # Maybe we should do val.name instead of str(val)

@@ -11,7 +11,7 @@ class Storage:
     def __init__(self):
         # SLICERS
         self.pyobj = PyObjSlicer(self)
-        # self.arrow = ArrowSlicer(self)
+        self.arrow = ArrowSlicer(self)
         self.pandas = PandasSlicer(self)
 
         # INTERNALS
@@ -29,6 +29,20 @@ class Storage:
     def num_batched_rows(self):
         return sum(t.num_rows for t in self._tables)
 
+    @property
+    def num_batched_columns(self):
+        return max([t.num_columns for t in self._tables])
+
+    @property
+    def num_committed_columns(self):
+        if self._tables:
+            return len(set(self._tables[-1].columns).union(self._committed.keys()))
+        else:
+            return len(self._committed.keys())
+
+    @property
+    def num_committed_rows(self):
+        return self._staged["_internals"]["index"]
 
     def stage(self, key: str, packet: Dict[str, object]):
         with self.lock:
@@ -88,34 +102,7 @@ class PyObjSlicer:
         self.parent = parent
 
     def __getitem__(self, item) -> Dict[str, object]:
-        if isinstance(item, slice):
-            with self.parent.lock:
-
-                tbl = pa.concat_tables(self.parent._tables)[item]
-                output = tbl.to_pydict()
-
-                com_start = None if item.start is None else item.start - self.parent.num_batched_rows
-                com_stop = None if item.stop is None else item.stop -self.parent.num_batched_rows
-                com_slice = slice(com_start, com_stop, item.step)
-
-                for k, v in self.parent._committed.items():
-                    output.setdefault(k, []).extend(v[com_slice])
-
-        elif isinstance(item, tuple) and len(item) == 2:
-            row_slicer = item[0]
-            col_slicer = item[1]
-            if isinstance(col_slicer, str):
-                col_slicer = (col_slicer, )
-
-            with self.parent.lock:
-                output = {}
-                for k, v in self.parent._committed:
-                    if k not in col_slicer:
-                        continue
-                    output[k] = v[row_slicer]
-        else:
-            raise TypeError("Slicing must be either [row] or [row, column] or [row, [columns]].")
-        return output
+        return self.parent.arrow[item].to_pydict()
 
 
 class PandasSlicer:
@@ -130,6 +117,42 @@ class PandasSlicer:
 class ArrowSlicer:
     def __init__(self, parent: Storage):
         self.parent = parent
+
+    def __getitem__(self, item) -> pa.Table:
+        if isinstance(item, slice):
+            row_slicer = item
+            if isinstance(row_slicer, slice):
+                r_start, r_stop, r_stride = row_slicer.indices(self.parent.num_committed_rows)
+                row_slicer = list(range(r_start, r_stop, r_stride))
+
+            with self.parent.lock:
+                tbls = [] + self.parent._tables + [create_table(self.parent._committed)]
+                promoted_schema = promote_schemas(t.schema for t in tbls)
+                tbls = [cast_available(t, promoted_schema) for t in tbls]
+                tbl = pa.concat_tables(tbls, promote=True).take(row_slicer)
+                return tbl
+
+        elif isinstance(item, tuple) and len(item) == 2:
+            row_slicer = item[0]
+            if isinstance(row_slicer, slice):
+                r_start, r_stop, r_stride = row_slicer.indices(self.parent.num_committed_rows)
+                row_slicer = list(range(r_start, r_stop, r_stride))
+
+            col_slicer = item[1]
+            if isinstance(col_slicer, str):
+                col_slicer = (col_slicer, )
+            if isinstance(col_slicer, slice):
+                c_start, c_stop, c_stride = col_slicer.indices(self.parent.num_committed_columns)
+                col_slicer = list(range(c_start, c_stop, c_stride))
+
+            with self.parent.lock:
+                tbls = [] + self.parent._tables + [create_table(self.parent._committed)]
+                promoted_schema = promote_schemas(t.schema for t in tbls)
+                tbls = [cast_available(t, promoted_schema) for t in tbls]
+                tbl = pa.concat_tables(tbls, promote=True).select(col_slicer).take(row_slicer)
+                return tbl
+        else:
+            raise TypeError("Slicing must be either [row] or [row, column] or [row, [columns]].")
 
 
 class StorageSink(Protocol):
