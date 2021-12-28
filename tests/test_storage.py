@@ -85,26 +85,3 @@ def test_batching():
 
     output = s.pyobj[:]
     assert output == desired_output
-
-
-def test_schema_evolution():
-    s = Storage()
-    n_rows = 10
-    n_batches = 3
-    index = 0
-    desired_output = defaultdict(list)
-    for b in range(n_batches + 1):
-        for idx in range(n_rows):
-            tmp1 = generate_data(idx, "k1_", lossy=False)
-            for k, v in tmp1.items():
-                desired_output[k].append(v)
-            if b > 1:
-                tmp1
-            s.stage("key1", tmp1)
-            s.commit()
-            desired_output["index"].append(index)
-            index += 1
-        s.batch()
-
-    output = s.pyobj[:]
-    assert output == desired_output
